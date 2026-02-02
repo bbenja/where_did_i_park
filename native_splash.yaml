@@ -1,0 +1,11 @@
+flutter_native_splash:
+  android: true
+  web: true
+
+  color: "#000000"
+  # background_image: "assets/park.png"
+  image: "assets/park.png"
+
+  android_12:
+    color: "#000000"
+    image: "assets/park.png"
