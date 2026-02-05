@@ -51,13 +51,67 @@ class _LocationScreenState extends State<LocationScreen> {
     });
   }
 
-  Future<void> getLocation() async {
-    if (!await Geolocator.isLocationServiceEnabled()) return;
-    LocationPermission p = await Geolocator.checkPermission();
-    if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
-    if (p == LocationPermission.denied || p == LocationPermission.deniedForever) return;
+  Future<void> showLocationRequiredDialog(BuildContext context) async {
+    if (!context.mounted) return;
 
-    final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must choose
+      builder: (_) => AlertDialog(
+        title: const Text('Location required',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        textScaleFactor: 0.91,
+                      ),
+        content: const Text(
+          'Please enable location services to continue.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await Geolocator.openLocationSettings();
+            },
+            child: const Text('Open settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> getLocation(BuildContext context) async {
+    LocationPermission p = await Geolocator.checkPermission();
+
+    if (p == LocationPermission.denied) {
+      p = await Geolocator.requestPermission();
+    }
+
+    if (p == LocationPermission.denied) return;
+
+    if (p == LocationPermission.deniedForever) {
+      await Geolocator.openAppSettings();
+      return;
+    }
+
+    final enabled = await Geolocator.isLocationServiceEnabled();
+
+    if (!enabled) {
+      if (!context.mounted) return;
+      await showLocationRequiredDialog(context);
+      return;
+    }
+
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    if (!mounted) return;
+
     final now = DateTime.now();
     final t = "${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')} "
         "${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}";
@@ -122,7 +176,7 @@ Widget build(BuildContext context) {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ElevatedButton(
-                  onPressed: getLocation,
+                  onPressed: () => getLocation(context),
                   child: const Text("REFRESH"),
                 ),
                 const SizedBox(height: 8),
